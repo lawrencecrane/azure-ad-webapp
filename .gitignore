@@ -1,2 +1,4 @@
 dist
 node_modules
+infrastructure/.terraform
+infrastructure/terraform.tfstate*

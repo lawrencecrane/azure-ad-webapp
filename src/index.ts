@@ -5,7 +5,8 @@ const ENV = {
     clientId: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
     tenantId: process.env.TENANT_ID,
-    uri: process.env.URI || 'http://localhost:3000',
+    hostname: process.env.WEBSITE_HOSTNAME || 'localhost:3000',
+    scheme: process.env.SCHEME || 'http://',
     port: 3000,
 }
 
@@ -22,7 +23,7 @@ const app = createApp(
             clientSecret: ENV.clientSecret,
         },
     },
-    ENV.uri
+    `${ENV.scheme}${ENV.hostname}`
 )
 
 app.listen(ENV.port, () => console.log(`Listening on port ${ENV.port}`))
