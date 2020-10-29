@@ -32,10 +32,12 @@ const getAuthCode = (req: Request): Option<string> => {
 }
 
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
+    // TODO: Check if user has already authenticated...
+
     const code = getAuthCode(req)
 
     if (code.isNone()) {
-        return res.redirect('/signin')
+        return res.redirect('/login')
     }
 
     const { authenticator, redirectURI } = getAppState(req)
@@ -47,7 +49,10 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
             redirectUri: redirectURI,
         })
         .then((response) => {
-            // TODO: Use token to get user information
+            // TODO: Store jwt / token / some identifier from response to cookie
+            // so that we can use that to identify on next request
+            res.locals.username = response.account.name
+
             next()
         })
         .catch((error) => {
@@ -56,7 +61,7 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
         })
 }
 
-function signin(req: Request, res: Response) {
+function login(req: Request, res: Response) {
     const { authenticator, redirectURI } = getAppState(req)
 
     authenticator
@@ -64,9 +69,7 @@ function signin(req: Request, res: Response) {
             scopes: ['user.read'],
             redirectUri: redirectURI,
         })
-        .then((response) => {
-            res.redirect(response)
-        })
+        .then((response) => res.redirect(response))
         .catch((error) => console.log(JSON.stringify(error)))
 }
 
@@ -76,11 +79,15 @@ export const createApp = (authConfig: Configuration, uri: string): Express => {
         authenticator: new ConfidentialClientApplication(authConfig),
     })
 
-    app.get('/signin', signin)
+    app.get('/login', login)
 
     app.use(authMiddleware)
 
-    app.get('/', (_, res) => res.json({ name: 'hello from the otherside' }))
+    app.get('/', (_, res) =>
+        res.json({
+            whoami: res.locals.username,
+        })
+    )
 
     return app
 }
