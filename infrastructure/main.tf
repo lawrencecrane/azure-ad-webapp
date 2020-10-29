@@ -14,8 +14,13 @@ resource "random_password" "azuread_secret" {
 data "azurerm_client_config" "default" {
 }
 
+locals {
+    app_service_name = "appservice-${random_pet.resource_identifier.id}"
+}
+
 resource "azuread_application" "default" {
-  name = "app-registration-webapp-${random_pet.resource_identifier.id}"
+  name       = "app-registration-webapp-${random_pet.resource_identifier.id}"
+  reply_urls = ["http://localhost:3000", "https://${local.app_service_name}.azurewebsites.net"]
 }
 
 resource "azuread_application_password" "default" {
@@ -48,7 +53,7 @@ resource "azurerm_app_service_plan" "default" {
 }
 
 resource "azurerm_app_service" "default" {
-  name                = "appservice-${random_pet.resource_identifier.id}"
+  name                = local.app_service_name
   location            = azurerm_resource_group.default.location
   resource_group_name = azurerm_resource_group.default.name
   app_service_plan_id = azurerm_app_service_plan.default.id
