@@ -1,4 +1,4 @@
-import express, { Express, Request } from 'express'
+import express, { Express, NextFunction, Request, Response } from 'express'
 import { Option } from 'prelude-ts'
 import {
     ConfidentialClientApplication,
@@ -6,33 +6,19 @@ import {
     Configuration,
 } from '@azure/msal-node'
 
-type routeAdder = (
-    app: Express,
-    cca: ConfidentialClientApplication,
-    uri: string
-) => Express
+interface AppState {
+    redirectURI: string
+    authenticator: ConfidentialClientApplication
+}
 
-const composeRoutes = (
-    app: Express,
-    cca: ConfidentialClientApplication,
-    uri: string,
-    ...routes: routeAdder[]
-): Express => routes.reduce((app, route) => route(app, cca, uri), app)
+const getAppState = (req: Request): AppState => ({
+    redirectURI: req.app.get('redirectURI'),
+    authenticator: req.app.get('authenticator'),
+})
 
-const addSignIn: routeAdder = (app, cca, uri) => {
-    app.get('/signin', (_, res) => {
-        const authCodeUrlParameters = {
-            scopes: ['user.read'],
-            redirectUri: uri,
-        }
-
-        cca.getAuthCodeUrl(authCodeUrlParameters)
-            .then((response) => {
-                res.redirect(response)
-            })
-            .catch((error) => console.log(JSON.stringify(error)))
-    })
-
+const setAppState = (app: Express, state: AppState): Express => {
+    app.set('redirectURI', state.redirectURI)
+    app.set('authenticator', state.authenticator)
     return app
 }
 
@@ -48,50 +34,56 @@ const getAuthCode = (req: Request): Option<string> => {
     )
 }
 
-const addAuthMiddleware: routeAdder = (app, cca, uri) => {
-    app.use(async function (req, res, next) {
-        const code = getAuthCode(req)
+function authMiddleware(req: Request, res: Response, next: NextFunction) {
+    const code = getAuthCode(req)
 
-        if (code.isNone()) {
-            return res.redirect('/signin')
-        }
+    if (code.isNone()) {
+        return res.redirect('/signin')
+    }
 
-        const tokenRequest: AuthorizationCodeRequest = {
+    const { authenticator, redirectURI } = getAppState(req)
+
+    return authenticator
+        .acquireTokenByCode({
             code: code.getOrThrow(),
             scopes: ['user.read'],
-            redirectUri: uri,
-        }
-
-        return cca
-            .acquireTokenByCode(tokenRequest)
-            .then((response) => {
-                // TODO: Use token to get user information
-                next()
-            })
-            .catch((error) => {
-                console.log(error)
-                res.status(500).send(error)
-            })
-    })
-
-    return app
+            redirectUri: redirectURI,
+        })
+        .then((response) => {
+            // TODO: Use token to get user information
+            next()
+        })
+        .catch((error) => {
+            console.log(error)
+            res.sendStatus(403)
+        })
 }
 
-const addHome: routeAdder = (app) => {
-    app.get('/', (req, res) => {
-        res.json({ name: 'hello from the otherside' })
-    })
+function signin(req: Request, res: Response) {
+    const { authenticator, redirectURI } = getAppState(req)
 
-    return app
+    authenticator
+        .getAuthCodeUrl({
+            scopes: ['user.read'],
+            redirectUri: redirectURI,
+        })
+        .then((response) => {
+            res.redirect(response)
+        })
+        .catch((error) => console.log(JSON.stringify(error)))
 }
 
 export const createApp = (authConfig: Configuration, uri: string): Express => {
-    return composeRoutes(
-        express(),
-        new ConfidentialClientApplication(authConfig),
-        uri,
-        addSignIn,
-        addAuthMiddleware,
-        addHome
-    )
+    const app = setAppState(express(), {
+        redirectURI: uri,
+        authenticator: new ConfidentialClientApplication(authConfig),
+    })
+
+    app.get('/signin', signin)
+
+    app.use(authMiddleware)
+
+    app.get('/', (_, res) => res.json({ name: 'hello from the otherside' }))
+
+    return app
 }
