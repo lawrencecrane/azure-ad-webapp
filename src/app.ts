@@ -1,10 +1,6 @@
 import express, { Express, NextFunction, Request, Response } from 'express'
 import { Option } from 'prelude-ts'
-import {
-    ConfidentialClientApplication,
-    AuthorizationCodeRequest,
-    Configuration,
-} from '@azure/msal-node'
+import { ConfidentialClientApplication, Configuration } from '@azure/msal-node'
 
 interface AppState {
     redirectURI: string
