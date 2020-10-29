@@ -11,6 +11,12 @@ resource "random_password" "azuread_secret" {
   override_special = "_%@"
 }
 
+resource "random_password" "jwt_token_secret" {
+  length           = 32
+  special          = true
+  override_special = "_%@"
+}
+
 data "azurerm_client_config" "default" {
 }
 
@@ -70,5 +76,6 @@ resource "azurerm_app_service" "default" {
     "TENANT_ID"                    = data.azurerm_client_config.default.tenant_id
     "SCHEME"                       = "https://"
     "PORT"                         = "8080"
+    "JWT_TOKEN_SECRET"             = random_password.jwt_token_secret.result
   }
 }

@@ -7,6 +7,7 @@ const ENV = {
     hostname: process.env.WEBSITE_HOSTNAME || 'localhost:3000',
     scheme: process.env.SCHEME || 'http://',
     port: process.env.PORT || 3000,
+    jwtTokenSecret: process.env.JWT_TOKEN_SECRET,
 }
 
 if (!Object.keys(ENV).every((k) => (ENV as any)[k])) {
@@ -22,6 +23,7 @@ const app = createApp(
             clientSecret: ENV.clientSecret,
         },
     },
+    ENV.jwtTokenSecret,
     `${ENV.scheme}${ENV.hostname}`
 )
 
