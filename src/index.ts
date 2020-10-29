@@ -1,4 +1,3 @@
-import msal from '@azure/msal-node'
 import { createApp } from './app'
 
 const ENV = {
@@ -7,7 +6,7 @@ const ENV = {
     tenantId: process.env.TENANT_ID,
     hostname: process.env.WEBSITE_HOSTNAME || 'localhost:3000',
     scheme: process.env.SCHEME || 'http://',
-    port: 3000,
+    port: process.env.PORT || 3000,
 }
 
 if (!Object.keys(ENV).every((k) => (ENV as any)[k])) {
