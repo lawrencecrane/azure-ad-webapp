@@ -73,6 +73,10 @@ function login(req: Request, res: Response) {
         .catch((error) => console.log(JSON.stringify(error)))
 }
 
+function home(_: Request, res: Response) {
+    res.json({ whoami: res.locals.username })
+}
+
 export const createApp = (authConfig: Configuration, uri: string): Express => {
     const app = setAppState(express(), {
         redirectURI: uri,
@@ -83,11 +87,7 @@ export const createApp = (authConfig: Configuration, uri: string): Express => {
 
     app.use(authMiddleware)
 
-    app.get('/', (_, res) =>
-        res.json({
-            whoami: res.locals.username,
-        })
-    )
+    app.get('/', home)
 
     return app
 }
