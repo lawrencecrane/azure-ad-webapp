@@ -54,13 +54,16 @@ resource "azurerm_app_service" "default" {
   app_service_plan_id = azurerm_app_service_plan.default.id
 
   site_config {
-    always_on = true
+    always_on        = false
+    linux_fx_version = "NODE|12-lts"
   }
 
   app_settings = {
-    "CLIENT_ID"  = azuread_application.default.id
-    "CLIENT_KEY" = azuread_application_password.default.value
-    "TENANT_ID"  = data.azurerm_client_config.default.tenant_id
-    "SCHEME" = "https://"
+    "WEBSITE_NODE_DEFAULT_VERSION" = "12-lts"
+    "CLIENT_ID"                    = azuread_application.default.application_id
+    "CLIENT_SECRET"                = azuread_application_password.default.value
+    "TENANT_ID"                    = data.azurerm_client_config.default.tenant_id
+    "SCHEME"                       = "https://"
+    "PORT"                         = "8080"
   }
 }
