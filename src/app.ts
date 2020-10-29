@@ -15,6 +15,7 @@ const getAppState = (req: Request): AppState => ({
 const setAppState = (app: Express, state: AppState): Express => {
     app.set('redirectURI', state.redirectURI)
     app.set('authenticator', state.authenticator)
+
     return app
 }
 
