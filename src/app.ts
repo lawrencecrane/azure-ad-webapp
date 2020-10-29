@@ -19,19 +19,11 @@ const composeRoutes = (
     ...routes: routeAdder[]
 ): Express => routes.reduce((app, route) => route(app, cca, uri), app)
 
-const addRoot: routeAdder = (app, cca, uri) => {
-    app.get('/', (req, res) => {
-        res.sendStatus(200)
-    })
-
-    return app
-}
-
 const addSignIn: routeAdder = (app, cca, uri) => {
     app.get('/signin', (req, res) => {
         const authCodeUrlParameters = {
             scopes: ['user.read'],
-            redirectUri: `${uri}/home`,
+            redirectUri: uri,
         }
 
         cca.getAuthCodeUrl(authCodeUrlParameters)
@@ -69,17 +61,16 @@ const addAuthMiddleware: routeAdder = (app) => {
 }
 
 const addHome: routeAdder = (app, cca, uri) => {
-    app.get('/home', (req, res) => {
+    app.get('/', (req, res) => {
         const tokenRequest: AuthorizationCodeRequest = {
             code: getAuthCode(req).getOrThrow(),
             scopes: ['user.read'],
-            redirectUri: `${uri}/home`,
+            redirectUri: uri,
         }
 
         cca.acquireTokenByCode(tokenRequest)
             .then((response) => {
-                console.log('\nResponse: \n:', response)
-                res.sendStatus(200)
+                res.json({ name: 'hello from the otherside' })
             })
             .catch((error) => {
                 console.log(error)
@@ -95,7 +86,6 @@ export const createApp = (authConfig: Configuration, uri: string): Express => {
         express(),
         new ConfidentialClientApplication(authConfig),
         uri,
-        addRoot,
         addSignIn,
         addAuthMiddleware,
         addHome
