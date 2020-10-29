@@ -1,6 +1,10 @@
 import express, { Express, NextFunction, Request, Response } from 'express'
 import { Option } from 'prelude-ts'
-import { ConfidentialClientApplication, Configuration } from '@azure/msal-node'
+import {
+    AuthenticationResult,
+    ConfidentialClientApplication,
+    Configuration,
+} from '@azure/msal-node'
 
 interface AppState {
     redirectURI: string
@@ -17,6 +21,21 @@ const setAppState = (app: Express, state: AppState): Express => {
     app.set('authenticator', state.authenticator)
 
     return app
+}
+
+interface ResponseState {
+    name: string
+    username: string
+}
+
+const getResponseState = (res: Response): ResponseState => ({
+    name: res.locals.name,
+    username: res.locals.username,
+})
+
+const setResponseState = (res: Response, result: AuthenticationResult) => {
+    res.locals.name = result.account.name
+    res.locals.username = result.account.username
 }
 
 const getAuthCode = (req: Request): Option<string> => {
@@ -49,9 +68,10 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
             redirectUri: redirectURI,
         })
         .then((response) => {
+            setResponseState(res, response)
+
             // TODO: Store jwt / token / some identifier from response to cookie
             // so that we can use that to identify on next request
-            res.locals.username = response.account.name
 
             next()
         })
@@ -74,7 +94,9 @@ function login(req: Request, res: Response) {
 }
 
 function home(_: Request, res: Response) {
-    res.json({ whoami: res.locals.username })
+    const { name } = getResponseState(res)
+
+    res.json({ whoami: name })
 }
 
 export const createApp = (authConfig: Configuration, uri: string): Express => {
