@@ -20,7 +20,7 @@ const composeRoutes = (
 ): Express => routes.reduce((app, route) => route(app, cca, uri), app)
 
 const addSignIn: routeAdder = (app, cca, uri) => {
-    app.get('/signin', (req, res) => {
+    app.get('/signin', (_, res) => {
         const authCodeUrlParameters = {
             scopes: ['user.read'],
             redirectUri: uri,
@@ -48,34 +48,38 @@ const getAuthCode = (req: Request): Option<string> => {
     )
 }
 
-const addAuthMiddleware: routeAdder = (app) => {
-    app.use(function (req, res, next) {
-        if (getAuthCode(req).isSome()) {
-            return next()
+const addAuthMiddleware: routeAdder = (app, cca, uri) => {
+    app.use(async function (req, res, next) {
+        const code = getAuthCode(req)
+
+        if (code.isNone()) {
+            return res.redirect('/signin')
         }
 
-        res.redirect(`/signin`)
-    })
-
-    return app
-}
-
-const addHome: routeAdder = (app, cca, uri) => {
-    app.get('/', (req, res) => {
         const tokenRequest: AuthorizationCodeRequest = {
-            code: getAuthCode(req).getOrThrow(),
+            code: code.getOrThrow(),
             scopes: ['user.read'],
             redirectUri: uri,
         }
 
-        cca.acquireTokenByCode(tokenRequest)
+        return cca
+            .acquireTokenByCode(tokenRequest)
             .then((response) => {
-                res.json({ name: 'hello from the otherside' })
+                // TODO: Use token to get user information
+                next()
             })
             .catch((error) => {
                 console.log(error)
                 res.status(500).send(error)
             })
+    })
+
+    return app
+}
+
+const addHome: routeAdder = (app) => {
+    app.get('/', (req, res) => {
+        res.json({ name: 'hello from the otherside' })
     })
 
     return app
